@@ -1,11 +1,11 @@
 {
-  "name": "com.egg-packages",
-  "version": "1.0.0",
-  "displayName": "EGG Timers",
-  "description": "Timers Package.",
+  "name": "com.fried-eggs.timers",
+  "version": "1.0.1",
+  "displayName": "Fried EGGS Timers Package",
+  "description": "A Unity package providing timer utilities for game development.",
   "unity": "6000.2",
   "author": {
     "name": "Confsuin",
-    "url": "https://github.com/Confsuin/EGG-Timing"
+    "url": "https://github.com/Fried-EGG-S/EGG-Timers"
   }
 }
