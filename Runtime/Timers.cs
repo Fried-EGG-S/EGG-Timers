@@ -36,6 +36,13 @@ namespace EGG.Timers
             _elapsed = 0f;
             IsRunning = true;
         }
+        public void Stop()
+        {
+            _elapsed = 0f;
+            _duration = 0f;
+            IsRunning = false;
+        }
+
         public virtual void Dispose()
         {
             IsRunning = false;
@@ -119,6 +126,14 @@ namespace EGG.Timers
             _elapsedDuration = 0f;
             HasDuration = true;
             IsRunning = true;
+        }
+        public void Stop()
+        {
+            _elapsed = 0f;
+            _elapsedDuration = 0f;
+            _interval = 0f;
+            _duration = 0f;
+            IsRunning = false;
         }
         public void Dispose()
         {

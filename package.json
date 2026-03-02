@@ -1,6 +1,6 @@
 {
   "name": "com.fried-eggs.timers",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "displayName": "Fried EGGS Timers Package",
   "description": "A Unity package providing timer utilities for game development.",
   "unity": "6000.2",

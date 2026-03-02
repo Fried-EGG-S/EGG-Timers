@@ -10,6 +10,7 @@ namespace EGG.Timers
         bool MarkedForRemoval { get; }
         float RemainingTime { get; }
         void Start(float duration);
+        void Stop();
         void Dispose();
         void Tick(float deltaTime);
         void Pause();
@@ -28,6 +29,7 @@ namespace EGG.Timers
 
         void Start(float interval);
         void Start(float interval, float duration);
+        void Stop();
         void Dispose();
         void Tick(float deltaTime);
         void Pause();
