@@ -19,6 +19,7 @@ namespace EGG.Timers
         public bool AutoRemoveOnComplete { get; set; } = true;
 
         public bool MarkedForRemoval { get; private set; } = false;
+        public float SpeedMultiplier { get; private set; } = 1f;
 
         public event Action OnTimerCompleted;
 
@@ -58,25 +59,44 @@ namespace EGG.Timers
             IsRunning = true;
         }
 
-        public void Increment(float amount)
+        public void Increment(float amount, bool scaled = false)
         {
             if (!IsRunning) return;
 
-            _elapsed += amount;
+            var effectiveAmount = scaled ? amount * SpeedMultiplier : amount;
+            _elapsed += effectiveAmount;
             CheckIfCompleted();
         }
-        public void Decrement(float amount)
+        public void Decrement(float amount, bool scaled = false)
         {
             if (!IsRunning) return;
-            _elapsed = Mathf.Max(_elapsed - amount, 0f);
+            var effectiveAmount = scaled ? amount * SpeedMultiplier : amount;
+            _elapsed = Mathf.Max(_elapsed - effectiveAmount, 0f);
             CheckIfCompleted();
+        }
+
+        public void SetSpeedMultiplier(float multiplier)
+        {
+            SpeedMultiplier = multiplier;
+        }
+
+        public void IncreaseSpeedMultiplier(float amount)
+        {
+            if (amount < 0f) Debug.LogWarning("IncreaseSpeedMultiplier called with negative amount. Use DecreaseSpeedMultiplier instead.");
+            SpeedMultiplier += amount;
+        }
+
+        public void DecreaseSpeedMultiplier(float amount)
+        {
+            if (amount < 0f) Debug.LogWarning("DecreaseSpeedMultiplier called with negative amount. Use IncreaseSpeedMultiplier instead.");
+            SpeedMultiplier = Mathf.Max(SpeedMultiplier - amount, 0f);
         }
 
         public virtual void Tick(float deltaTime)
         {
             if (!IsRunning) return;
 
-            _elapsed += deltaTime;
+            _elapsed += deltaTime * SpeedMultiplier;
             CheckIfCompleted();
         }
 
@@ -117,6 +137,7 @@ namespace EGG.Timers
         public float RemainingTime => Mathf.Max(_interval - _elapsed, 0f);
 
         public bool MarkedForRemoval { get; private set; } = false;
+        public float SpeedMultiplier { get; private set; } = 1f;
 
         public event Action OnTick;
 
@@ -157,22 +178,54 @@ namespace EGG.Timers
             IsRunning = true;
         }
 
-        public void Increment(float amount)
+        public void Increment(float amount, bool scaled = false)
         {
             if (!IsRunning) return;
-            _elapsed += amount;
+            var effectiveAmount = scaled ? amount * SpeedMultiplier : amount;
+            _elapsed += effectiveAmount;
         }
-        public void Decrement(float amount)
+        public void Decrement(float amount, bool scaled = false)
         {
             if (!IsRunning) return;
-            _elapsed = Mathf.Max(_elapsed - amount, 0f);
+            var effectiveAmount = scaled ? amount * SpeedMultiplier : amount;
+            _elapsed = Mathf.Max(_elapsed - effectiveAmount, 0f);
         }
 
-        public virtual void Tick(float deltaTime)
+
+        public void SetSpeedMultiplier(float multiplier)
+        {
+            if (multiplier < 0f)
+            {
+                multiplier = 0f;
+                Debug.LogWarning("SetSpeedMultiplier called with negative multiplier. Clamping to 0.");
+            }
+            SpeedMultiplier = multiplier;
+        }
+
+        public void IncreaseSpeedMultiplier(float amount)
+        {
+            if (amount < 0f)
+            {
+                Debug.LogWarning("IncreaseSpeedMultiplier called with negative amount. Use DecreaseSpeedMultiplier instead.");
+                return;
+            }
+            SpeedMultiplier += amount;
+        }
+
+        public void DecreaseSpeedMultiplier(float amount)
+        {
+            if (amount < 0f)
+            {
+                Debug.LogWarning("DecreaseSpeedMultiplier called with negative amount. Use IncreaseSpeedMultiplier instead.");
+                return;
+            }
+            SpeedMultiplier = Mathf.Max(SpeedMultiplier - amount, 0f);
+        }
+        public void Tick(float deltaTime)
         {
             if (!IsRunning) return;
 
-            _elapsed += deltaTime;
+            _elapsed += deltaTime * SpeedMultiplier;
 
             while (_elapsed >= _interval)
             {

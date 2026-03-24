@@ -10,15 +10,19 @@ namespace EGG.Timers
         bool AutoRemoveOnComplete { get; set; }
         bool MarkedForRemoval { get; }
         float RemainingTime { get; }
+        float SpeedMultiplier { get; }
 
         void Start(float duration);
         void Stop();
         void Dispose();
-        void Tick(float deltaTime);
         void Pause();
         void Unpause();
-        void Decrement(float amount);
-        void Increment(float amount);
+        void Increment(float amount, bool scaled = false);
+        void Decrement(float amount, bool scaled = false);
+        void SetSpeedMultiplier(float multiplier);
+        void IncreaseSpeedMultiplier(float amount);
+        void DecreaseSpeedMultiplier(float amount);
+        void Tick(float deltaTime);
 
         event Action OnTimerCompleted;
     }
@@ -29,15 +33,19 @@ namespace EGG.Timers
         bool IsRunning { get; }
         bool MarkedForRemoval { get; }
         float RemainingTime { get; }
+        float SpeedMultiplier { get; }
 
         void Start(float interval);
         void Stop();
         void Dispose();
-        void Tick(float deltaTime);
         void Pause();
         void Unpause();
-        void Increment(float amount);
-        void Decrement(float amount);
+        void Increment(float amount, bool scaled = false);
+        void Decrement(float amount, bool scaled = false);
+        void SetSpeedMultiplier(float multiplier);
+        void IncreaseSpeedMultiplier(float amount);
+        void DecreaseSpeedMultiplier(float amount);
+        void Tick(float deltaTime);
 
         event Action OnTick;
     }
