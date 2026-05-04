@@ -28,7 +28,7 @@ namespace EGG.Timers
         {
             if (_registered) throw new InvalidOperationException("Timer is already registered with TimeManager.");
 
-            TimeManager.Instance.AddTimer(this);
+            TimeManager.Instance.AddTimer((ITimerBase)this);
             _registered = true;
         }
 
@@ -147,7 +147,7 @@ namespace EGG.Timers
         {
             if (_registered) throw new InvalidOperationException("Timer is already registered with TimeManager.");
 
-            TimeManager.Instance.AddTimer(this);
+            TimeManager.Instance.AddTimer((ITimerBase)this);
             _registered = true;
         }
 

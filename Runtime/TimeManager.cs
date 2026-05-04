@@ -21,8 +21,8 @@ namespace EGG.Timers
             }
         }
 
-        private readonly List<ITimer> _timers = new();
         private readonly List<ITickTimer> _tickTimers = new();
+        private readonly List<ITimer> _timers = new();
 
         private void Awake()
         {
@@ -36,22 +36,24 @@ namespace EGG.Timers
             DontDestroyOnLoad(gameObject);
         }
 
-        public void AddTimer(ITimer timer)
+        public void AddTimer(ITimerBase newTimer)
         {
-            if (timer == null) return;
-            if (_timers.Contains(timer)) return;
-            _timers.Add(timer);
+            if (newTimer == null) return;
+            switch (newTimer)
+            {
+                case ITickTimer tickTimer: if (!_tickTimers.Contains(tickTimer)) _tickTimers.Add(tickTimer); break;
+                case ITimer timer: if (!_timers.Contains(timer)) _timers.Add(timer); break;
+            }
         }
 
-        public void AddTimer(ITickTimer timer)
+        public void RemoveTimer(ITimerBase timer)
         {
-            if (timer == null) return;
-            if (_tickTimers.Contains(timer)) return;
-            _tickTimers.Add(timer);
+            switch (timer)
+            {
+                case ITickTimer tickTimer: _tickTimers.Remove(tickTimer); break;
+                case ITimer t: _timers.Remove(t); break;
+            }
         }
-
-        public void RemoveTimer(ITimer timer) => _timers.Remove(timer);
-        public void RemoveTimer(ITickTimer timer) => _tickTimers.Remove(timer);
 
         private void Update()
         {
@@ -60,14 +62,15 @@ namespace EGG.Timers
 
             for (int i = _tickTimers.Count - 1; i >= 0; i--)
             {
-                var tickTimer = _tickTimers[i];
-                if (tickTimer.MarkedForRemoval || tickTimer.Owner == null)
+                var timer = _tickTimers[i];
+                if (timer.MarkedForRemoval || timer.Owner == null)
                 {
                     _tickTimers.RemoveAt(i);
                     continue;
                 }
-                tickTimer.Tick(tickTimer.UseUnscaledTime ? unscaledDt : dt);
+                timer.Tick(timer.UseUnscaledTime ? unscaledDt : dt);
             }
+
             for (int i = _timers.Count - 1; i >= 0; i--)
             {
                 var timer = _timers[i];
