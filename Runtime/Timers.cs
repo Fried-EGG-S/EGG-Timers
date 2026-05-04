@@ -17,6 +17,7 @@ namespace EGG.Timers
         public float RemainingTime => Mathf.Max(_duration - _elapsed, 0f);
         public bool IsRunning { get; protected set; }
         public bool AutoRemoveOnComplete { get; set; } = true;
+        public bool UseUnscaledTime { get; set; }
 
         public bool MarkedForRemoval { get; private set; } = false;
         public float SpeedMultiplier { get; private set; } = 1f;
@@ -136,6 +137,7 @@ namespace EGG.Timers
         public bool IsRunning { get; protected set; }
         public float RemainingTime => Mathf.Max(_interval - _elapsed, 0f);
 
+        public bool UseUnscaledTime { get; set; }
         public bool MarkedForRemoval { get; private set; } = false;
         public float SpeedMultiplier { get; private set; } = 1f;
 

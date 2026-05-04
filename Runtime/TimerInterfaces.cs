@@ -8,6 +8,7 @@ namespace EGG.Timers
 
         bool IsRunning { get; }
         bool AutoRemoveOnComplete { get; set; }
+        bool UseUnscaledTime { get; set; }
         bool MarkedForRemoval { get; }
         float RemainingTime { get; }
         float SpeedMultiplier { get; }
@@ -31,6 +32,7 @@ namespace EGG.Timers
         ITimerOwner Owner { get; set; }
 
         bool IsRunning { get; }
+        bool UseUnscaledTime { get; set; }
         bool MarkedForRemoval { get; }
         float RemainingTime { get; }
         float SpeedMultiplier { get; }

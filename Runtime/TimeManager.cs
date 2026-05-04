@@ -56,6 +56,7 @@ namespace EGG.Timers
         private void Update()
         {
             float dt = Time.deltaTime;
+            float unscaledDt = Time.unscaledDeltaTime;
 
             for (int i = _tickTimers.Count - 1; i >= 0; i--)
             {
@@ -65,7 +66,7 @@ namespace EGG.Timers
                     _tickTimers.RemoveAt(i);
                     continue;
                 }
-                tickTimer.Tick(dt);
+                tickTimer.Tick(tickTimer.UseUnscaledTime ? unscaledDt : dt);
             }
             for (int i = _timers.Count - 1; i >= 0; i--)
             {
@@ -75,7 +76,7 @@ namespace EGG.Timers
                     _timers.RemoveAt(i);
                     continue;
                 }
-                _timers[i].Tick(dt);
+                timer.Tick(timer.UseUnscaledTime ? unscaledDt : dt);
             }
 
             Count = _timers.Count + _tickTimers.Count;
