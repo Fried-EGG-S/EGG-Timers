@@ -1,6 +1,6 @@
 {
-    "name": "EGG.Timers",
-    "rootNamespace": "EGG.Timers",
+    "name": "FriedEGGS.Timers",
+    "rootNamespace": "FriedEGGS.Timers",
     "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],
