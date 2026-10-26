@@ -1,209 +1,83 @@
 using System;
+using System.Threading;
 using UnityEngine;
 
-namespace EGG.Timers
+namespace FriedEGGS.Timers
 {
-    [Serializable]
-    public class Timer : ITimer
+    public abstract class TimerBase : IDisposable
     {
-        internal Timer() { }
+        private enum State { Stopped, Running, Paused }
 
-        public ITimerOwner Owner { get; set; }
+        private State _state;
+        private double _remainingAtAnchor;
+        private double _anchor;
+        private bool _cancelled;
 
-        private bool _registered = false;
+        internal int HeapIndex { get; set; } = -1;
+        internal double EndTime { get; private set; }
 
-        [SerializeField] protected float _duration;
-        [SerializeField] protected float _elapsed;
-        public float RemainingTime => Mathf.Max(_duration - _elapsed, 0f);
-        public bool IsRunning { get; protected set; }
-        public bool AutoRemoveOnComplete { get; set; } = true;
-        public bool UseUnscaledTime { get; set; }
-
-        public bool MarkedForRemoval { get; private set; } = false;
+        public bool UseUnscaledTime { get; }
         public float SpeedMultiplier { get; private set; } = 1f;
+        public bool IsPaused => _state == State.Paused;
+        // A timer with listeners runs until its callback fires; one without (a cooldown) runs until its time is up.
+        public bool IsRunning => _state == State.Running && (HasListeners || Remaining > 0d);
+        public float RemainingTime => (float)Remaining;
 
-        public event Action OnTimerCompleted;
+        private protected abstract bool HasListeners { get; }
 
-        public void Register()
+        private double Now => UseUnscaledTime ? Time.unscaledTimeAsDouble : Time.timeAsDouble;
+        private double Remaining => _state switch
         {
-            if (_registered) throw new InvalidOperationException("Timer is already registered with TimeManager.");
+            State.Running => Math.Max(_remainingAtAnchor - (Now - _anchor) * SpeedMultiplier, 0d),
+            State.Paused => _remainingAtAnchor,
+            _ => 0d
+        };
 
-            TimeManager.Instance.AddTimer((ITimerBase)this);
-            _registered = true;
+        internal TimerBase(bool unscaled, CancellationToken cancellation)
+        {
+            UseUnscaledTime = unscaled;
+            if (cancellation.CanBeCanceled) cancellation.Register(Cancel);
         }
 
-        public virtual void Start(float duration)
-        {
-            _duration = duration;
-            _elapsed = 0f;
-            IsRunning = true;
-        }
-        public void Stop()
-        {
-            _elapsed = 0f;
-            _duration = 0f;
-            IsRunning = false;
-        }
-
-        public virtual void Dispose()
-        {
-            IsRunning = false;
-            MarkedForRemoval = true;
-        }
-
-        public void Pause()
-        {
-            IsRunning = false;
-        }
-        public void Unpause()
-        {
-            IsRunning = true;
-        }
-
-        public void Increment(float amount, bool scaled = false)
-        {
-            if (!IsRunning) return;
-
-            var effectiveAmount = scaled ? amount * SpeedMultiplier : amount;
-            _elapsed += effectiveAmount;
-            CheckIfCompleted();
-        }
-        public void Decrement(float amount, bool scaled = false)
-        {
-            if (!IsRunning) return;
-            var effectiveAmount = scaled ? amount * SpeedMultiplier : amount;
-            _elapsed = Mathf.Max(_elapsed - effectiveAmount, 0f);
-            CheckIfCompleted();
-        }
-
-        public void SetSpeedMultiplier(float multiplier)
-        {
-            SpeedMultiplier = multiplier;
-        }
-
-        public void IncreaseSpeedMultiplier(float amount)
-        {
-            if (amount < 0f) Debug.LogWarning("IncreaseSpeedMultiplier called with negative amount. Use DecreaseSpeedMultiplier instead.");
-            SpeedMultiplier += amount;
-        }
-
-        public void DecreaseSpeedMultiplier(float amount)
-        {
-            if (amount < 0f) Debug.LogWarning("DecreaseSpeedMultiplier called with negative amount. Use IncreaseSpeedMultiplier instead.");
-            SpeedMultiplier = Mathf.Max(SpeedMultiplier - amount, 0f);
-        }
-
-        public virtual void Tick(float deltaTime)
-        {
-            if (!IsRunning) return;
-
-            _elapsed += deltaTime * SpeedMultiplier;
-            CheckIfCompleted();
-        }
-
-        private bool CheckIfCompleted()
-        {
-            if (_elapsed >= _duration)
-            {
-                IsRunning = false;
-                Log($"Timer completed after {_elapsed} seconds.");
-                if (AutoRemoveOnComplete) MarkedForRemoval = true;
-                OnTimerCompleted?.Invoke();
-                return true;
-            }
-            return false;
-        }
-
-        private static readonly bool _log = false;
-        private static void Log(string message)
-        {
-            if (!_log) return;
-            Debug.Log(message);
-        }
-    }
-
-    [Serializable]
-    public class TickTimer : ITickTimer
-    {
-        internal TickTimer() { }
-
-        public ITimerOwner Owner { get; set; }
-
-        private bool _registered = false;
-
-        [SerializeField] protected float _interval;
-        [SerializeField] protected float _elapsed;
-
-        public bool IsRunning { get; protected set; }
-        public float RemainingTime => Mathf.Max(_interval - _elapsed, 0f);
-
-        public bool UseUnscaledTime { get; set; }
-        public bool MarkedForRemoval { get; private set; } = false;
-        public float SpeedMultiplier { get; private set; } = 1f;
-
-        public event Action OnTick;
-
-        public void Register()
-        {
-            if (_registered) throw new InvalidOperationException("Timer is already registered with TimeManager.");
-
-            TimeManager.Instance.AddTimer((ITimerBase)this);
-            _registered = true;
-        }
-
-        public void Start(float interval)
-        {
-            _interval = interval;
-            _elapsed = 0f;
-            IsRunning = true;
-        }
+        public abstract void Start(float time);
 
         public void Stop()
         {
-            _elapsed = 0f;
-            _interval = 0f;
-            IsRunning = false;
+            _state = State.Stopped;
+            _remainingAtAnchor = 0d;
+            Reschedule();
         }
-
-        public void Dispose()
-        {
-            IsRunning = false;
-            MarkedForRemoval = true;
-        }
+        public void Dispose() => Stop();
 
         public void Pause()
         {
-            IsRunning = false;
+            if (!IsRunning) return;
+            Reanchor();
+            _state = State.Paused;
+            Reschedule();
         }
         public void Unpause()
         {
-            IsRunning = true;
+            if (_state != State.Paused) return;
+            _anchor = Now;
+            _state = State.Running;
+            Reschedule();
         }
 
-        public void Increment(float amount, bool scaled = false)
-        {
-            if (!IsRunning) return;
-            var effectiveAmount = scaled ? amount * SpeedMultiplier : amount;
-            _elapsed += effectiveAmount;
-        }
-        public void Decrement(float amount, bool scaled = false)
-        {
-            if (!IsRunning) return;
-            var effectiveAmount = scaled ? amount * SpeedMultiplier : amount;
-            _elapsed = Mathf.Max(_elapsed - effectiveAmount, 0f);
-        }
-
+        public void Increment(float amount, bool scaled = false) => Shift(-(scaled ? amount * SpeedMultiplier : amount));
+        public void Decrement(float amount, bool scaled = false) => Shift(scaled ? amount * SpeedMultiplier : amount);
 
         public void SetSpeedMultiplier(float multiplier)
         {
             if (multiplier < 0f)
             {
-                multiplier = 0f;
                 Debug.LogWarning("SetSpeedMultiplier called with negative multiplier. Clamping to 0.");
+                multiplier = 0f;
             }
+            Reanchor();
             SpeedMultiplier = multiplier;
+            Reschedule();
         }
-
         public void IncreaseSpeedMultiplier(float amount)
         {
             if (amount < 0f)
@@ -211,9 +85,8 @@ namespace EGG.Timers
                 Debug.LogWarning("IncreaseSpeedMultiplier called with negative amount. Use DecreaseSpeedMultiplier instead.");
                 return;
             }
-            SpeedMultiplier += amount;
+            SetSpeedMultiplier(SpeedMultiplier + amount);
         }
-
         public void DecreaseSpeedMultiplier(float amount)
         {
             if (amount < 0f)
@@ -221,19 +94,111 @@ namespace EGG.Timers
                 Debug.LogWarning("DecreaseSpeedMultiplier called with negative amount. Use IncreaseSpeedMultiplier instead.");
                 return;
             }
-            SpeedMultiplier = Mathf.Max(SpeedMultiplier - amount, 0f);
+            SetSpeedMultiplier(Mathf.Max(SpeedMultiplier - amount, 0f));
         }
-        public void Tick(float deltaTime)
+
+        private protected void Run(double time)
         {
-            if (!IsRunning) return;
+            if (_cancelled) return;
+            _remainingAtAnchor = time;
+            _anchor = Now;
+            _state = State.Running;
+            Reschedule();
+        }
 
-            _elapsed += deltaTime * SpeedMultiplier;
+        // Anchors the next period at the previous end, not at now, so a long frame fires every period it covered.
+        private protected void Repeat(double period)
+        {
+            _anchor = EndTime;
+            _remainingAtAnchor = period;
+            Reschedule();
+        }
 
-            while (_elapsed >= _interval)
+        private protected void ListenersChanged() => Reschedule();
+
+        internal abstract void Fire();
+
+        private void Shift(double delta)
+        {
+            if (!IsRunning && !IsPaused) return;
+            Reanchor();
+            _remainingAtAnchor = Math.Max(_remainingAtAnchor + delta, 0d);
+            Reschedule();
+        }
+
+        private void Reanchor()
+        {
+            _remainingAtAnchor = Remaining;
+            _anchor = Now;
+        }
+
+        private void Reschedule()
+        {
+            if (_state != State.Running || SpeedMultiplier <= 0f || !HasListeners)
             {
-                _elapsed -= _interval;
-                OnTick?.Invoke();
+                TimerScheduler.Unschedule(this);
+                return;
             }
+            EndTime = _anchor + _remainingAtAnchor / SpeedMultiplier;
+            TimerScheduler.Schedule(this);
+        }
+
+        private void Cancel()
+        {
+            _cancelled = true;
+            Stop();
+        }
+    }
+
+    public sealed class Timer : TimerBase
+    {
+        private Action _completed;
+
+        public event Action OnTimerCompleted
+        {
+            add { _completed += value; ListenersChanged(); }
+            remove { _completed -= value; ListenersChanged(); }
+        }
+
+        private protected override bool HasListeners => _completed != null;
+
+        public Timer(Action onCompleted = null, bool unscaled = false, CancellationToken cancellation = default) : base(unscaled, cancellation) => _completed = onCompleted;
+
+        public override void Start(float duration) => Run(Math.Max(duration, 0f));
+
+        internal override void Fire()
+        {
+            Stop();
+            _completed?.Invoke();
+        }
+    }
+
+    public sealed class TickTimer : TimerBase
+    {
+        private Action _ticked;
+        private float _interval;
+
+        public event Action OnTick
+        {
+            add { _ticked += value; ListenersChanged(); }
+            remove { _ticked -= value; ListenersChanged(); }
+        }
+
+        private protected override bool HasListeners => _ticked != null;
+
+        public TickTimer(Action onTick = null, bool unscaled = false, CancellationToken cancellation = default) : base(unscaled, cancellation) => _ticked = onTick;
+
+        public override void Start(float interval)
+        {
+            if (interval <= 0f) throw new ArgumentOutOfRangeException(nameof(interval), interval, "A tick interval must be above 0.");
+            _interval = interval;
+            Run(interval);
+        }
+
+        internal override void Fire()
+        {
+            Repeat(_interval);
+            _ticked?.Invoke();
         }
     }
 }
